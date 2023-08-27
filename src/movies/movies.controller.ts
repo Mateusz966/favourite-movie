@@ -1,8 +1,9 @@
-import { type RequestHandler } from 'express'
+import { type Request, type RequestHandler } from 'express'
 import { MovieReqDto } from './dtos/movie.req.dto'
 import { validateOrReject } from 'class-validator'
 import asyncHandler from 'express-async-handler'
 import { MoviesService } from './movies.service'
+import { validateAndExtractGetMoviesQuery } from './movies.helpers'
 
 const movieService = new MoviesService()
 export const createMovies = asyncHandler(async (req, res, next) => {
@@ -30,8 +31,16 @@ export const createMovies = asyncHandler(async (req, res, next) => {
   }
 })
 
-export const getMovies: RequestHandler = (req, res, next) => {
-  console.log(req.query)
-  res.send(movieService.getMovies())
-  res.send('S')
+export const getMovies: RequestHandler = (req: Request<Record<any, string>, any, any, { duration?: string, genres?: string[] }>, res) => {
+  const { duration: rawDuration, genres: rawGenres } = req.query
+
+  const { duration, genres, error } = validateAndExtractGetMoviesQuery(rawDuration, rawGenres)
+
+  const movies = movieService.getMovies(duration, genres)
+
+  if (error != null) {
+    return res.status(400).send({ message: error })
+  } else {
+    res.status(200).send(movies)
+  }
 }
